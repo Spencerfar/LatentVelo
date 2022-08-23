@@ -13,6 +13,7 @@ Full code coming soon! In the examples/ directory we show a few examples of the 
 
 If you find this useful please cite
 
+```
 @article{Farrell2022,
 	author = {Farrell, Spencer and Mani, Madhav and Goyal, Sidhartha},
 	title = {Inferring single-cell dynamics with structured dynamical representations of RNA velocity},
@@ -22,3 +23,4 @@ If you find this useful please cite
 	URL = {https://www.biorxiv.org/content/early/2022/08/23/2022.08.22.504858},
 	journal = {bioRxiv}
 }
+```
