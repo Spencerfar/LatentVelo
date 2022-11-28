@@ -1,7 +1,7 @@
 import torch as th
 from torch.nn import functional as F
 import torch.nn as nn
-from pygcn.layers import GraphConvolution as GCLayer
+from .gclayer import GraphConvolution as GCLayer
 import numpy as np    
 
 
