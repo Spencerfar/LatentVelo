@@ -5,7 +5,6 @@ from latentvelo import pl
 import latentvelo.utils
 from latentvelo.trainer import train_vae, set_adj, plot_history
 from latentvelo.trainer_nogcn import train_vae_nogcn
-from latentvelo.initialize import initialize
 from latentvelo.trainer_anvi import train_anvi
 from latentvelo.trainer_anvi_nogcn import train_anvi_nogcn
 from latentvelo.trainer_atac import train_atac
