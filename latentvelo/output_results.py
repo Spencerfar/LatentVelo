@@ -249,15 +249,15 @@ def cell_trajectories(model, adata, mode='normal', time_steps = 50):
                                                                      (th.Tensor(adata.obsm['celltype']).cuda(),
                                                                       th.Tensor(adata.obs['exp_time'][:,None]).cuda()),
                                                                      adata.obsp['adj'],
-                                                                     th.Tensor(adata.obs['batch_id'][:,None]).cuda(),
-                                                                     th.Tensor(adata.obsm['batch_onehot']).cuda()), 2, split_size=100)
+                                                                     (th.Tensor(adata.obs['batch_id'][:,None]).cuda(),
+                                                                     th.Tensor(adata.obsm['batch_onehot']).cuda())), 2, split_size=100)
                 else:
                     z_traj, times = batch_func(model.cell_trajectories, (th.Tensor(adata.layers['spliced']).cuda(),
                                                                      th.Tensor(adata.layers['unspliced']).cuda(),
                                                                      th.Tensor(adata.obsm['celltype']).cuda(),
                                                                      adata.obsp['adj'],
-                                                                     th.Tensor(adata.obs['batch_id'][:,None]).cuda(),
-                                                                     th.Tensor(adata.obsm['batch_onehot']).cuda()), 2, split_size=100)
+                                                                     (th.Tensor(adata.obs['batch_id'][:,None]).cuda(),
+                                                                     th.Tensor(adata.obsm['batch_onehot']).cuda())), 2, split_size=100)
 
     else:
         with th.no_grad():

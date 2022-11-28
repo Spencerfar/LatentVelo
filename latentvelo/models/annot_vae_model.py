@@ -530,7 +530,7 @@ class AnnotVAE(nn.Module):
         # estimate h for conditioning dynamics
         latent_state, latent_mean, latent_logvar, latent_time, time_mean, time_logvar = self.latent_embedding(normed_s, 
                                                                                                               normed_u, obs_celltype,
-                                                                                                               adj, batch_onehot)
+                                                                                                               adj, batch_onehot, exp_time = exp_time)
         z = latent_state[:,:self.latent*2]
         ulatent = latent_state[:,self.latent*2:self.latent*2+self.u_size]
         c = latent_state[:,self.latent*2 + self.u_size:]
