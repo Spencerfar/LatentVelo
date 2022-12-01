@@ -213,10 +213,11 @@ def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspl
     else:
         adata.obs['celltype_id'] = 0
 
-
-    if celltype_key != None and root_cells != None:
+    if root_cells == 'precalced':
+        print('using precalced root cells')
+    elif celltype_key != None and root_cells != None:
         adata.obs['root'] = 0
-        adata.obs['root'][adata.obs['clusters'] == root_cells] = 1
+        adata.obs['root'][adata.obs[celltype_key] == root_cells] = 1
     else:
         adata.obs['root'] = 0    
 
@@ -350,10 +351,12 @@ def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
     else:
         adata.obs['celltype_id'] = 0
 
-
-    if celltype_key != None and root_cells != None:
+    
+    if root_cells == 'precalced':
+        print('using precalced root cells')
+    elif celltype_key != None and root_cells != None:
         adata.obs['root'] = 0
-        adata.obs['root'][adata.obs['clusters'] == root_cells] = 1
+        adata.obs['root'][adata.obs[celltype_key] == root_cells] = 1
     else:
         adata.obs['root'] = 0  
     
