@@ -2,7 +2,7 @@
 
 Estimating RNA velocity in a learned latent space, enabling batch correction and dynamics based embeddings.
 
-Pre-print available at https://www.biorxiv.org/content/10.1101/2022.08.22.504858v1
+Pre-print available at https://www.biorxiv.org/content/10.1101/2022.08.22.504858v2
 
 ![diagram](diagrams/model_diagram_Aug23.png?raw=true)
 
@@ -129,13 +129,15 @@ matplotlib 3.5.2
 If you find this useful please cite
 
 ```
-@article{Farrell2022,
+@article {Farrell2022.08.22.504858,
 	author = {Farrell, Spencer and Mani, Madhav and Goyal, Sidhartha},
-	title = {Inferring single-cell transcriptomic dynamics with structured dynamical representations of RNA velocity},
+	title = {Inferring single-cell transcriptomic dynamics with structured latent gene expression dynamics},
+	elocation-id = {2022.08.22.504858},
 	year = {2022},
 	doi = {10.1101/2022.08.22.504858},
 	publisher = {Cold Spring Harbor Laboratory},
-	URL = {https://www.biorxiv.org/content/early/2022/08/23/2022.08.22.504858},
+	URL = {https://www.biorxiv.org/content/early/2022/12/01/2022.08.22.504858},
+	eprint = {https://www.biorxiv.org/content/early/2022/12/01/2022.08.22.504858.full.pdf},
 	journal = {bioRxiv}
 }
 ```
