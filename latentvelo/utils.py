@@ -81,8 +81,9 @@ def paired_correlation_numpy(x, y, axis=1):
     return corr
 
     
-def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None, root_cells = None,
-                          normalize_library=True, n_top_genes = 2000, smooth = True, umap=False, log=True, r2_adjust=True, share_normalization=False, center=False, celltype_key=None):
+def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None, root_cells = None, terminal_cells = None,
+                          normalize_library=True, n_top_genes = 2000, n_neighbors=30, smooth = True, umap=False, log=True, r2_adjust=True, share_normalization=False, center=False, celltype_key=None,
+                          bknn=False, retain_genes = None):
 
     """
     Clean and setup data for LatentVelo
@@ -118,8 +119,17 @@ def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspl
     adata.X = scp.sparse.csr_matrix(adata.layers[spliced_key].copy())
     
     if n_top_genes != None:
-        scv.pp.filter_genes_dispersion(adata, n_top_genes = n_top_genes)
-
+        scv.pp.filter_genes_dispersion(adata, n_top_genes = n_top_genes, subset=False)
+        
+        if retain_genes == None and 'highly_variable' in adata.var.columns.values:
+            print('Choosing top '+str(n_top_genes) + ' genes')
+            adata = adata[:, adata.var.highly_variable==True]
+        elif retain_genes != None and 'highly_variable' in adata.var.columns.values:
+            print('retaining specific genes')
+            adata = adata[:, (adata.var.highly_variable==True) | (adata.var.index.isin(retain_genes))]
+        else:
+            print('using all genes')
+    
     gc.collect()
     
     if scp.sparse.issparse(adata.layers[spliced_key]):
@@ -146,14 +156,19 @@ def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspl
     
     adata.layers['spliced'] = adata.layers[spliced_key]
     adata.layers['unspliced'] = adata.layers[unspliced_key]
-    
-    scv.pp.neighbors(adata, n_pcs=30, n_neighbors=30)
+
+    if bknn:
+        import scanpy.external as sce
+        sce.pp.bbknn(adata, batch_key=batch_key, local_connectivity=6)
+    else:
+        scv.pp.neighbors(adata, n_pcs=30, n_neighbors=n_neighbors)
     scv.pp.moments(adata, n_pcs=None, n_neighbors=None)
     adata.obsp['adj'] = adata.obsp['connectivities']
     
     compute_velocity_genes(adata, n_top_genes=n_top_genes,r2_adjust=r2_adjust)
     
     if umap:
+        print('computing UMAP')
         sc.tl.umap(adata)
     
     if smooth:
@@ -219,11 +234,25 @@ def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspl
         adata.obs['root'] = 0
         adata.obs['root'][adata.obs[celltype_key] == root_cells] = 1
     else:
-        adata.obs['root'] = 0    
+        adata.obs['root'] = 0
+    
+    if terminal_cells == 'precalced':
+        print('using precalced terminal cells')
+    elif celltype_key != None and terminal_cells != None:
+        adata.obs['terminal'] = 0
+        if type(terminal_cells) == list:
+            for c in terminal_cells:
+                adata.obs['terminal'][adata.obs[celltype_key] == c] = 1
+        else:
+            adata.obs['terminal'][adata.obs[celltype_key] == terminal_cells] = 1
+    else:
+        adata.obs['terminal'] = 0
+    return adata
 
 
-def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None, root_cells=None,
-                          normalize_library=True, n_top_genes = 2000, smooth = True, umap=False, log=True, celltype_key='celltype', r2_adjust=True, share_normalization=False):
+def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None, root_cells=None, terminal_cells=None,
+                          normalize_library=True, n_top_genes = 2000, n_neighbors=30, smooth = True, umap=False, log=True, celltype_key='celltype', r2_adjust=True, share_normalization=False, center=False, 
+                      bknn=False, retain_genes = None):
 
     """
     Clean and setup data for celltype annotated version of LatentVelo
@@ -260,7 +289,16 @@ def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
     adata.X = scp.sparse.csr_matrix(adata.layers[spliced_key].copy())
     
     if n_top_genes != None:
-        scv.pp.filter_genes_dispersion(adata, n_top_genes = n_top_genes)
+        scv.pp.filter_genes_dispersion(adata, n_top_genes = n_top_genes, subset=False)
+
+        if retain_genes == None and 'highly_variable' in adata.var.columns.values:
+            adata = adata[:, adata.var.highly_variable==True]
+            print('Choosing top '+str(n_top_genes) + ' genes')
+        elif retain_genes != None and 'highly_variable' in adata.var.columns.values:
+            print('retaining specific genes')
+            adata = adata[:, (adata.var.highly_variable==True) | (adata.var.index.isin(retain_genes))]
+        else:
+            print('using all genes')
     
     if scp.sparse.issparse(adata.layers[spliced_key]):
         adata.layers[spliced_key] = adata.layers[spliced_key].todense()
@@ -287,13 +325,18 @@ def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
     adata.layers['spliced'] = adata.layers[spliced_key]
     adata.layers['unspliced'] = adata.layers[unspliced_key]
     
-    scv.pp.neighbors(adata, n_pcs=30, n_neighbors=30)
+    if bknn:
+        import scanpy.external as sce
+        sce.pp.bbknn(adata, batch_key=batch_key, local_connectivity=6)
+    else:
+        scv.pp.neighbors(adata, n_pcs=30, n_neighbors=n_neighbors)
     scv.pp.moments(adata, n_pcs=None, n_neighbors=None)
     adata.obsp['adj'] = adata.obsp['connectivities']
     
     compute_velocity_genes(adata, n_top_genes=n_top_genes,r2_adjust=r2_adjust)
     
     if umap:
+        print('computing UMAP')
         sc.tl.umap(adata)
     
     if smooth:
@@ -303,10 +346,20 @@ def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
         adata.layers['spliced_raw'] = np.array(adata.layers['spliced'])
         adata.layers['unspliced_raw'] = np.array(adata.layers['unspliced'])
         
-        adata.layers['spliced'] = np.array(adata.layers['Ms']/adata.uns['scale_spliced'])
-        adata.layers[spliced_key] = np.array(adata.layers['Ms']/adata.uns['scale_spliced'])
-        adata.layers['unspliced'] = np.array(adata.layers['Mu']/adata.uns['scale_unspliced'])
-        adata.layers[unspliced_key] = np.array(adata.layers['Mu']/adata.uns['scale_unspliced'])
+        if center:
+            adata.uns['mean_spliced'] = np.mean(adata.layers['Ms'], axis=0)[None]
+            adata.uns['mean_unspliced'] = np.mean(adata.layers['Mu'], axis=0)[None]
+            
+            adata.layers['spliced'] = np.array((adata.layers['Ms'] - adata.uns['mean_spliced'])/adata.uns['scale_spliced'])
+            adata.layers[spliced_key] = np.array((adata.layers['Ms'] - adata.uns['mean_spliced'])/adata.uns['scale_spliced'])
+            adata.layers['unspliced'] = np.array((adata.layers['Mu'] - adata.uns['mean_unspliced'])/adata.uns['scale_unspliced'])
+            adata.layers[unspliced_key] = np.array((adata.layers['Mu'] - adata.uns['mean_unspliced'])/adata.uns['scale_unspliced'])
+            
+        else:
+            adata.layers['spliced'] = np.array(adata.layers['Ms']/adata.uns['scale_spliced'])
+            adata.layers[spliced_key] = np.array(adata.layers['Ms']/adata.uns['scale_spliced'])
+            adata.layers['unspliced'] = np.array(adata.layers['Mu']/adata.uns['scale_unspliced'])
+            adata.layers[unspliced_key] = np.array(adata.layers['Mu']/adata.uns['scale_unspliced'])
         
     else:
         adata.uns['scale_spliced'] = 4*(1+np.std(adata.layers[spliced_key], axis=0)[None])
@@ -358,10 +411,25 @@ def anvi_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
         adata.obs['root'] = 0
         adata.obs['root'][adata.obs[celltype_key] == root_cells] = 1
     else:
-        adata.obs['root'] = 0  
+        adata.obs['root'] = 0
+
+    
+    if terminal_cells == 'precalced':
+        print('using precalced terminal cells')
+    elif celltype_key != None and terminal_cells != None:
+        adata.obs['terminal'] = 0
+        if type(terminal_cells) == list:
+            for c in terminal_cells:
+                adata.obs['terminal'][adata.obs[celltype_key] == c] = 1
+        else:
+            adata.obs['terminal'][adata.obs[celltype_key] == terminal_cells] = 1
+    else:
+        adata.obs['terminal'] = 0
+    
+    return adata
     
 
-def atac_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None,
+def atac_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced', batch_key = None, root_cells=None, terminal_cells=None, celltype_key='celltype',
                           normalize_library=True, n_top_genes = 2000, smooth = True, umap=False, log=False, n_neighbors=30, connectivities = None):
 
     """
@@ -467,6 +535,35 @@ def atac_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspliced
         onehotbatch = OneHotEncoder(sparse=False).fit_transform(batch_id[:,None])
         adata.obsm['batch_onehot'] = onehotbatch
 
+    if celltype_key != None:
+        label_encoder = LabelEncoder()
+        celltype = label_encoder.fit_transform(adata.obs[celltype_key])
+        adata.obs['celltype_id'] = celltype
+    else:
+        adata.obs['celltype_id'] = 0
+
+        
+    if root_cells == 'precalced':
+        print('using precalced root cells')
+    elif celltype_key != None and root_cells != None:
+        adata.obs['root'] = 0
+        adata.obs['root'][adata.obs[celltype_key] == root_cells] = 1
+    else:
+        adata.obs['root'] = 0
+
+    
+    if terminal_cells == 'precalced':
+        print('using precalced terminal cells')
+    elif celltype_key != None and terminal_cells != None:
+        adata.obs['terminal'] = 0
+        if type(terminal_cells) == list:
+            for c in terminal_cells:
+                adata.obs['terminal'][adata.obs[celltype_key] == c] = 1
+        else:
+            adata.obs['terminal'][adata.obs[celltype_key] == terminal_cells] = 1
+    else:
+        adata.obs['terminal'] = 0  
+
 
 # efficiently compute a batch of jacobians
 def batch_jacobian(func, x, create_graph=True):
@@ -508,6 +605,7 @@ def batch_func(func, inputs, num_outputs, split_size = 500):
         
         inputs_i = []
         for input in inputs:
+            #print(type(input), input.shape)
             if input==None or input == (None, None) or input == (None, None, None) or input == (None, None, None, None) or type(input) == int or type(input) == float or (type(input) != tuple and len(input.shape)) == 1:
                 inputs_i.append(input)
             elif type(input) == tuple:
@@ -525,11 +623,17 @@ def batch_func(func, inputs, num_outputs, split_size = 500):
                         inputs_i.append((input[0][i-split_size:i], input[1][i-split_size:i], input[2][i-split_size:i]))
                 elif len(input) == 4:
                     #print(input)
-                    if input[:2] == (None, None):
+                    if input == (None, None, None, None):
                         inputs_i.append(input)
+                    elif input[:3] == (None, None, None) and input[3] != None:
+                        inputs_i.append((None, None, None, input[3][i-split_size:i]))
                         #elif input[0] != None and input[1] != None and input[2] == None:
                         #    #print(input)
                         #    inputs_i.append((input[0][i-split_size:i], input[1][i-split_size:i], None, None))
+
+                    elif input[:2] == (None, None) and input[2] != None and input[3] != None:
+                        inputs_i.append((None, None, input[2][i-split_size:i], input[3][i-split_size:i]))
+                        
                     elif input[0] != None and input[1] != None and input[2] == None and input[3] == None:
                         inputs_i.append((input[0][i-split_size:i], input[1][i-split_size:i], None, None))
                       
